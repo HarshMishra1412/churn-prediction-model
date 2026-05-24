@@ -1,179 +1,288 @@
-# Customer Churn Prediction — End-to-End Machine Learning Project
+# Customer Churn Predictor
+ 
+<div align="center">
+**An end-to-end Machine Learning model that identifies telecom customers likely to churn — before they actually leave.**
+ 
+</div>
+---
+ 
+## Table of Contents
+ 
+- [Overview](#overview)
+- [Project Flow](#project-flow)
+- [Dataset](#dataset)
+- [Features Used](#features-used)
+- [Model Architecture](#model-architecture)
+- [Results](#model-performance)
+- [How to Run](#how-to-run)
+- [Project Structure](#project-structure)
+- [Tech Stack](#tech-stack)
+---
+ 
+## Overview
+ 
+Customer churn costs telecom companies **billions of dollars** every year. Acquiring a new customer is **5-7x more expensive** than retaining an existing one. This project builds a binary classification model using **XGBoost** to predict whether a customer will churn — giving the business a window to intervene with targeted retention strategies.
+ 
+| Metric | Score |
+|--------|-------|
+| Churn Recall | **92%** |
+| ROC-AUC | **0.76** |
+| Churners Caught | **342 / 373** |
+| Churners Missed | **Only 31** |
  
 ---
  
-## Project Overview
+## Project Flow
  
-Customer churn is one of the most critical business problems in the telecom industry. Losing a customer is far more expensive than retaining one. This project builds a complete, production-ready machine learning pipeline to identify customers who are likely to churn — before they actually do — giving the business a window to intervene with targeted retention strategies.
+```
++------------------------------------------------------------------+
+|                        PROJECT PIPELINE                          |
++------------------------------------------------------------------+
  
-The model was trained on a real-world telecom dataset and optimized specifically for **maximum churn detection (Recall)**, which is the metric that matters most in a business context where missing a churner is costlier than a false alarm.
+  Raw Data (telecom_churn.csv)
+        |
+        v
+  +-------------+
+  | Data        |  - Convert TotalCharges to numeric
+  | Cleaning    |  - Fill NaN with median
+  |             |  - Drop customerID column
+  |             |  - Encode Churn (Yes/No -> 1/0)
+  +------+------+
+         |
+         v
+  +-------------+
+  | Label       |  - LabelEncoder on all text columns
+  | Encoding    |    (gender, Partner, Contract, etc.)
+  +------+------+
+         |
+         v
+  +-------------+
+  | Feature     |  - charges_per_month = TotalCharges / (tenure + 1)
+  | Engineering |  - is_new_customer (tenure <= 6)
+  |             |  - is_loyal_customer (tenure >= 24)
+  |             |  - total_services (sum of all service columns)
+  |             |  - has_full_protection (Security+Support+Backup)
+  |             |  - is_high_value (high charges + long tenure)
+  +------+------+
+         |
+         v
+  +-------------+
+  | Train/Test  |  - 80% Train / 20% Test
+  | Split       |  - stratify=y (equal churn ratio in both sets)
+  +------+------+
+         |
+         v
+  +-------------+
+  | SMOTE       |  - Balance classes from 3:1 to 1:1
+  | Oversampling|  - Applied ONLY on training data
+  |             |  - No data leakage into test set
+  +------+------+
+         |
+         v
+  +-------------+
+  | Model       |  - Logistic Regression (baseline)
+  | Training    |  - Random Forest
+  |             |  - XGBoost (primary model)
+  +------+------+
+         |
+         v
+  +-------------+
+  | GridSearchCV|  - 5-fold cross validation
+  | Tuning      |  - scoring = recall
+  |             |  - 27 parameter combinations tested
+  |             |  - Best: lr=0.01, depth=3, estimators=300
+  +------+------+
+         |
+         v
+  +-------------+
+  | Threshold   |  - Default threshold = 0.50
+  | Optimization|  - Optimal threshold = 0.35
+  |             |  - Tested range: 0.30 to 0.50
+  +------+------+
+         |
+         v
+  +-------------+
+  | Evaluation  |  - Classification Report
+  |             |  - ROC-AUC Score
+  |             |  - Confusion Matrix
+  +------+------+
+         |
+         v
+  +-------------+
+  | Model       |  - Saved as churn_model.pkl
+  | Export      |  - Stored to Google Drive
+  +-------------+
+```
  
 ---
  
-## Business Problem
+## Dataset
  
-In telecom, the average cost of acquiring a new customer is **5-7x higher** than retaining an existing one. A model that can flag at-risk customers even a few weeks in advance allows retention teams to:
- 
-- Offer personalized discounts or plan upgrades
-- Proactively reach out with customer support
-- Identify pain points causing dissatisfaction
-> **The Challenge:** Churn datasets are heavily imbalanced. Only ~26% of customers churn, which means a naive model can achieve 74% accuracy by simply predicting "no churn" for everyone — and still be completely useless for the actual business goal.
+- **Source:** [Telco Customer Churn — Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)
+- **Size:** 7,043 rows x 21 columns
+- **Target:** `Churn` — 1 if customer left, 0 if customer stayed
+### Class Distribution
+```
+Stayed  (0) ████████████████████████  74%
+Churned (1) ███████                   26%
+```
  
 ---
  
-## Why Recall Over Accuracy?
+## Features Used
  
-This is one of the most important design decisions in this project.
+| Feature | Description | Type |
+|---------|-------------|------|
+| `tenure` | Number of months with the company | Numerical |
+| `MonthlyCharges` | Monthly bill amount | Numerical |
+| `TotalCharges` | Total amount charged | Numerical |
+| `Contract` | Month-to-month / One year / Two year | Categorical |
+| `InternetService` | DSL / Fiber optic / None | Categorical |
+| `OnlineSecurity` | Has online security addon | Binary |
+| `TechSupport` | Has tech support addon | Binary |
+| `charges_per_month` | TotalCharges / (tenure + 1) | Engineered |
+| `is_new_customer` | 1 if tenure <= 6 months | Engineered |
+| `is_loyal_customer` | 1 if tenure >= 24 months | Engineered |
+| `total_services` | Count of all active services | Engineered |
+| `has_full_protection` | Security + Support + Backup | Engineered |
+| `is_high_value` | High charges + long tenure | Engineered |
  
-**Accuracy = 69%** — this number looks low, but it is intentional and correct.
+---
  
-Consider the two types of errors this model can make:
+## Model Architecture
+ 
+```
+XGBoostClassifier
+├── n_estimators  : 300
+├── max_depth     : 3
+├── learning_rate : 0.01
+├── random_state  : 42
+└── threshold     : 0.35  <- Tuned down from 0.5 to catch more churners
+```
+ 
+### Why XGBoost?
+- Handles structured/tabular data extremely well
+- Built-in regularization to prevent overfitting
+- Works well with imbalanced datasets
+- Fast and scalable even on large datasets
+### Why SMOTE?
+> The dataset had a **3:1 class imbalance** — 74% stayed, 26% churned.
+> A naive model could hit 74% accuracy by predicting "no churn" for everyone — completely useless.
+> SMOTE synthetically generates minority class samples to balance training data to 1:1 ratio.
+ 
+### Why Threshold = 0.35?
+> In churn prediction, **missing a churner is far worse than a false alarm.**
+> Losing a customer permanently costs much more than sending an unnecessary retention offer.
+> Lowering the threshold from 0.5 to 0.35 improved churn recall from **60% to 92%**.
+ 
+---
+ 
+## Model Performance
+ 
+### Journey of Improvement
+ 
+| Stage | Churn Recall | ROC-AUC | Churners Missed |
+|-------|-------------|---------|-----------------|
+| Baseline XGBoost | 60% | 0.72 | 151 |
+| After GridSearchCV | 80% | 0.77 | 79 |
+| After Feature Engineering | 90% | 0.75 | 39 |
+| **Final (Threshold 0.35)** | **92%** | **0.76** | **31** |
+ 
+### Why Recall Over Accuracy?
  
 | Error Type | What Happens | Business Cost |
-|:---|:---|:---|
-| False Negative (Miss a churner) | Customer leaves, no intervention | HIGH — lost revenue forever |
-| False Positive (Flag a non-churner) | Send a retention offer unnecessarily | LOW — small discount cost |
+|------------|-------------|---------------|
+| Miss a churner (False Negative) | Customer leaves, no intervention | HIGH — revenue lost forever |
+| Flag a non-churner (False Positive) | Send unnecessary retention offer | LOW — small discount cost |
  
-> Missing a churner means losing that customer permanently. Flagging a non-churner incorrectly costs only a small retention offer. Therefore, **Recall is the right metric to optimize**, even if it slightly reduces overall accuracy.
- 
-At threshold 0.35, the model catches **92% of all churners** — only 31 out of 373 churn customers are missed.
- 
----
- 
-## Project Pipeline
+### Classification Report (Final Model)
  
 ```
-Raw Data
-    |
-    v
-Data Cleaning & Preprocessing
-    |-- Convert TotalCharges to numeric
-    |-- Fill missing values with median
-    |-- Drop irrelevant columns (customerID)
-    |
-    v
-Feature Engineering & Encoding
-    |-- Label encode all categorical columns
-    |-- Encode target variable (Yes/No -> 1/0)
-    |
-    v
-Train / Test Split (80-20)
-    |
-    v
-SMOTE - Synthetic Minority Oversampling
-    |-- Balance classes from 3:1 ratio to 1:1
-    |-- Applied ONLY on training data (no data leakage)
-    |
-    v
-Model Training
-    |-- Logistic Regression (baseline)
-    |-- Random Forest
-    |-- XGBoost (primary model)
-    |
-    v
-Hyperparameter Tuning - GridSearchCV
-    |-- 5-fold cross validation
-    |-- Optimized for Recall
-    |-- 27 parameter combinations tested
-    |-- Best: learning_rate=0.01, max_depth=3, n_estimators=300
-    |
-    v
-Threshold Optimization
-    |-- Default threshold = 0.50
-    |-- Optimal threshold = 0.35
-    |-- Tested range: 0.30 to 0.50
-    |
-    v
-Final Evaluation + Model Export (.pkl)
+              precision    recall  f1-score   support
+ 
+           0       0.95      0.61      0.74      1036
+           1       0.46      0.92      0.61       373
+ 
+    accuracy                           0.69      1409
+   macro avg       0.71      0.76      0.68      1409
+weighted avg       0.82      0.69      0.71      1409
+ 
+ROC-AUC: 0.76
 ```
- 
----
- 
-## Results
- 
-### Performance at Threshold 0.35 (Final Model)
- 
-| Metric | Class 0 (Stayed) | Class 1 (Churned) |
-|:---|:---:|:---:|
-| Precision | 0.95 | 0.46 |
-| Recall | 0.61 | **0.92** |
-| F1-Score | 0.74 | 0.61 |
- 
-| Overall Metric | Score |
-|:---|:---:|
-| Accuracy | 69% |
-| ROC-AUC | 0.76 |
-| Churn Recall | **92%** |
  
 ### Confusion Matrix
- 
 ```
                    Predicted: Stayed    Predicted: Churned
-Actual: Stayed           630                  406
+Actual: Stayed           635                  401
 Actual: Churned           31                  342
 ```
  
-- **342** churners correctly identified and flagged for retention
+- **342** churners correctly flagged for retention intervention
 - Only **31** churners missed by the model
-- 406 non-churners flagged (acceptable false alarm rate)
-### Journey of Improvement
- 
-| Stage | Churn Recall | Churners Missed |
-|:---|:---:|:---:|
-| Baseline XGBoost | 60% | 151 |
-| After GridSearchCV | 80% | 79 |
-| After Threshold Tuning | **92%** | **31** |
- 
+- 401 non-churners flagged (acceptable — cost is just a retention offer)
 ---
  
 ## Key Findings — Feature Importance
  
-| Rank | Feature | Importance Score | Business Insight |
-|:---:|:---|:---:|:---|
+| Rank | Feature | Importance | Business Insight |
+|------|---------|------------|-----------------|
 | 1 | Contract Type | 0.42 | Month-to-month customers churn the most |
-| 2 | Internet Service | 0.10 | Fiber optic users show higher churn |
+| 2 | Internet Service | 0.10 | Fiber optic users show higher churn rate |
 | 3 | Online Security | 0.07 | No security addon = higher churn risk |
-| 4 | Tech Support | 0.06 | Poor support experience leads to churn |
+| 4 | Tech Support | 0.06 | Poor support experience drives churn |
 | 5 | Phone Service | 0.05 | Service quality impacts retention |
  
-> **Key Insight:** The single most impactful retention strategy would be converting month-to-month customers to annual contracts through targeted incentives.
- 
----
- 
-## Note on Accuracy vs Recall Tradeoff
- 
-The final model accuracy is 69%, which is lower than a naive baseline of 74%. This is a **deliberate and correct tradeoff**.
- 
-By lowering the classification threshold from 0.50 to 0.35, the model becomes more aggressive in flagging potential churners. This increases false positives but dramatically reduces false negatives.
- 
-In production, the business team would review flagged customers and apply retention strategies selectively. The cost of reviewing extra customers is far lower than the revenue loss from missed churners.
- 
----
- 
-## Tech Stack
- 
-| Category | Tools |
-|:---|:---|
-| Language | Python 3.12 |
-| ML Framework | Scikit-learn, XGBoost |
-| Imbalanced Data | Imbalanced-learn (SMOTE) |
-| Data Processing | Pandas, NumPy |
-| Visualization | Matplotlib, Seaborn |
-| Model Persistence | Joblib |
-| Environment | Google Colab |
+> **Key Insight:** Converting month-to-month customers to annual contracts is the single most impactful retention strategy this model reveals.
  
 ---
  
 ## How to Run
  
-```bash
-# Clone the repository
-git clone https://github.com/your-username/churn-prediction-model.git
+### On Google Colab (Recommended)
  
-# Install dependencies
-pip install -r requirements.txt
+```python
+# Step 1: Upload the notebook to Colab
  
-# Open the notebook in Google Colab or Jupyter and run all cells
+# Step 2: Install dependencies
+!pip install xgboost scikit-learn imbalanced-learn pandas matplotlib seaborn lightgbm
+ 
+# Step 3: Upload dataset
+from google.colab import files
+files.upload()  # Upload telecom_churn.csv
+ 
+# Step 4: Run all cells in order
+ 
+# Step 5: Save model to Drive
+from google.colab import drive
+import joblib
+drive.mount('/content/drive')
+joblib.dump(best_model, '/content/drive/MyDrive/churn_model.pkl')
+```
+ 
+### Predict a New Customer
+ 
+```python
+import joblib, pandas as pd
+ 
+model = joblib.load('churn_model.pkl')
+ 
+sample = pd.DataFrame({
+    'tenure': [2],
+    'MonthlyCharges': [85.0],
+    'TotalCharges': [170.0],
+    'Contract': [0],          # 0 = Month-to-month
+    'InternetService': [1],   # 1 = Fiber optic
+    'OnlineSecurity': [0],    # 0 = No
+    'TechSupport': [0],       # 0 = No
+    'total_services': [2],
+    'is_new_customer': [1],
+    'charges_per_month': [56.6]
+})
+ 
+prob = model.predict_proba(sample)[0][1]
+pred = (prob >= 0.35).astype(int)
+print(f"Churn Prediction: {'Will Churn' if pred == 1 else 'Will Stay'}")
+print(f"Churn Probability: {prob:.1%}")
 ```
  
 ---
@@ -183,24 +292,40 @@ pip install -r requirements.txt
 ```
 churn-prediction-model/
 |
-|-- churn_prediction.ipynb    <- Full notebook with all steps
-|-- churn_model.pkl           <- Saved XGBoost model
-|-- dataset.csv               <- Telecom churn dataset
-|-- requirements.txt          <- Python dependencies
-|-- README.md                 <- Project documentation
+├── churn_prediction.ipynb    <- Full Colab notebook with all steps
+├── churn_model.pkl           <- Saved XGBoost model
+├── telecom_churn.csv         <- Dataset (download from Kaggle)
+├── requirements.txt          <- Python dependencies
+└── README.md                 <- You are here
 ```
  
 ---
  
-## Future Improvements
+## Tech Stack
  
-- Deploy model as a REST API using FastAPI or Flask
-- Build an interactive dashboard using Streamlit
-- Experiment with LightGBM and CatBoost
-- Add SHAP values for individual prediction explainability
-- Implement real-time prediction pipeline
+| Tool | Purpose |
+|------|---------|
+| Python 3.12 | Core language |
+| Pandas | Data manipulation |
+| NumPy | Numerical operations |
+| Matplotlib & Seaborn | Data visualization |
+| Scikit-learn | Preprocessing, metrics, splitting |
+| XGBoost | Primary ML model |
+| LightGBM | Comparison model |
+| Imbalanced-learn | SMOTE oversampling |
+| Joblib | Model serialization |
+| Google Colab | Training environment |
+| Google Drive | Model storage |
+ 
 ---
  
 ## Author
  
-Built as part of a hands-on machine learning portfolio project focusing on real-world business problem solving, not just model accuracy.
+> Built with a focus on real-world business impact — not just model accuracy.
+> Feel free to star this repo if you found it useful!
+ 
+---
+ 
+<div align="center">
+<sub>Made using Python • XGBoost • SMOTE • Google Colab</sub>
+</div>
