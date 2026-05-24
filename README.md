@@ -14,6 +14,7 @@
 - [Features Used](#features-used)
 - [Model Architecture](#model-architecture)
 - [Results](#model-performance)
+- [Model Comparison](#model-comparison)
 - [How to Run](#how-to-run)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
@@ -83,6 +84,8 @@ Customer churn costs telecom companies **billions of dollars** every year. Acqui
   | Model       |  - Logistic Regression (baseline)
   | Training    |  - Random Forest
   |             |  - XGBoost (primary model)
+  |             |  - LightGBM (comparison)
+  |             |  - Ensemble (XGB + LGBM + RF)
   +------+------+
          |
          v
@@ -152,7 +155,7 @@ Churned (1) ███████                   26%
 ## Model Architecture
  
 ```
-XGBoostClassifier
+XGBoostClassifier (Final Selected Model)
 ├── n_estimators  : 300
 ├── max_depth     : 3
 ├── learning_rate : 0.01
@@ -220,6 +223,32 @@ Actual: Churned           31                  342
 - **342** churners correctly flagged for retention intervention
 - Only **31** churners missed by the model
 - 401 non-churners flagged (acceptable — cost is just a retention offer)
+---
+ 
+## Model Comparison
+ 
+Three models were trained and evaluated systematically at threshold 0.35. XGBoost was selected as the final model based on best Recall score — the most critical metric for churn prediction.
+ 
+| Model | Recall | ROC-AUC | Churners Missed | Selected |
+|-------|--------|---------|-----------------|----------|
+| Logistic Regression | 0.72 | 0.68 | 104 | No |
+| Random Forest | 0.78 | 0.73 | 82 | No |
+| LightGBM | 0.90 | 0.74 | 39 | No |
+| Ensemble (XGB+LGBM+RF) | 0.89 | 0.77 | 41 | No |
+| **XGBoost (Final)** | **0.92** | **0.76** | **31** | **Yes** |
+ 
+### Why Not LightGBM or Ensemble?
+ 
+```
+LightGBM  → Recall 0.90 — missed 39 churners (8 more than XGBoost)
+Ensemble  → Recall 0.89 — missed 41 churners (10 more than XGBoost)
+XGBoost   → Recall 0.92 — missed only 31 churners (BEST)
+```
+ 
+> In a business context where every missed churner = lost revenue,
+> XGBoost was the clear winner with the lowest miss rate.
+> A systematic model comparison was done — not just assumption.
+ 
 ---
  
 ## Key Findings — Feature Importance
@@ -329,3 +358,4 @@ churn-prediction-model/
 <div align="center">
 <sub>Made using Python • XGBoost • SMOTE • Google Colab</sub>
 </div>
+ 
