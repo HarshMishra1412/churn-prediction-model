@@ -11,6 +11,8 @@
 **An end-to-end Machine Learning model that identifies telecom customers likely to churn — before they actually leave.**
  
 </div>
+
+
 ---
  
 ## Table of Contents
