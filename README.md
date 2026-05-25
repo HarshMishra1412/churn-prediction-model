@@ -113,7 +113,7 @@ Customer churn costs telecom companies **billions of dollars** every year. Acqui
          v
   +-------------+
   | Model       |  - Saved as churn_model.pkl
-  | Export      |  - Stored to Google Drive
+  | Export      |  - Ready for local or cloud deployment
   +-------------+
 ```
  
@@ -267,26 +267,46 @@ XGBoost   → Recall 0.92 — missed only 31 churners (BEST)
  
 ## How to Run
  
-### On Google Colab (Recommended)
- 
-```python
-# Step 1: Upload the notebook to Colab
- 
-# Step 2: Install dependencies
-!pip install xgboost scikit-learn imbalanced-learn pandas matplotlib seaborn lightgbm
- 
-# Step 3: Upload dataset
-from google.colab import files
-files.upload()  # Upload telecom_churn.csv
- 
-# Step 4: Run all cells in order
- 
-# Step 5: Save model to Drive
-from google.colab import drive
-import joblib
-drive.mount('/content/drive')
-joblib.dump(best_model, '/content/drive/MyDrive/churn_model.pkl')
+### Prerequisites
+- Python 3.10 or above
+- pip
+### 1. Clone the repository
+```bash
+git clone https://github.com/your-username/churn-prediction-model.git
+cd churn-prediction-model
 ```
+ 
+### 2. Create a virtual environment
+```bash
+python -m venv venv
+```
+ 
+### 3. Activate the virtual environment
+ 
+**Windows:**
+```bash
+venv\Scripts\activate
+```
+ 
+**Mac / Linux:**
+```bash
+source venv/bin/activate
+```
+ 
+### 4. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+ 
+### 5. Add the dataset
+Download `telecom_churn.csv` from [Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) and place it in the project root folder.
+ 
+### 6. Run the notebook
+```bash
+jupyter notebook churn_prediction.ipynb
+```
+ 
+---
  
 ### Predict a New Customer
  
@@ -320,12 +340,12 @@ print(f"Churn Probability: {prob:.1%}")
  
 ```
 churn-prediction-model/
-|
-├── churn_prediction.ipynb    <- Full Colab notebook with all steps
-├── churn_model.pkl           <- Saved XGBoost model
-├── telecom_churn.csv         <- Dataset (download from Kaggle)
-├── requirements.txt          <- Python dependencies
-└── README.md                 <- You are here
+│
+├── churn_prediction.ipynb    ← Full notebook with all steps
+├── churn_model.pkl           ← Saved XGBoost model
+├── telecom_churn.csv         ← Dataset (download from Kaggle)
+├── requirements.txt          ← All Python dependencies
+└── README.md                 ← You are here
 ```
  
 ---
@@ -343,8 +363,6 @@ churn-prediction-model/
 | LightGBM | Comparison model |
 | Imbalanced-learn | SMOTE oversampling |
 | Joblib | Model serialization |
-| Google Colab | Training environment |
-| Google Drive | Model storage |
  
 ---
  
@@ -356,6 +374,5 @@ churn-prediction-model/
 ---
  
 <div align="center">
-<sub>Made using Python • XGBoost • SMOTE • Google Colab</sub>
+<sub>Made using Python • XGBoost • SMOTE • scikit-learn</sub>
 </div>
- 
