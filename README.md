@@ -1,5 +1,11 @@
 # Customer Churn Predictor
  
+![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
+![XGBoost](https://img.shields.io/badge/Model-XGBoost-orange)
+![Recall](https://img.shields.io/badge/Churn%20Recall-92%25-brightgreen)
+![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.76-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+ 
 <div align="center">
 **An end-to-end Machine Learning model that identifies telecom customers likely to churn — before they actually leave.**
  
@@ -214,11 +220,8 @@ ROC-AUC: 0.76
 ```
  
 ### Confusion Matrix
-```
-                   Predicted: Stayed    Predicted: Churned
-Actual: Stayed           635                  401
-Actual: Churned           31                  342
-```
+ 
+![Confusion Matrix](confusion_matrix.png)
  
 - **342** churners correctly flagged for retention intervention
 - Only **31** churners missed by the model
@@ -260,6 +263,8 @@ XGBoost   → Recall 0.92 — missed only 31 churners (BEST)
 | 3 | Online Security | 0.07 | No security addon = higher churn risk |
 | 4 | Tech Support | 0.06 | Poor support experience drives churn |
 | 5 | Phone Service | 0.05 | Service quality impacts retention |
+ 
+![Feature Importance](feature_importance.png)
  
 > **Key Insight:** Converting month-to-month customers to annual contracts is the single most impactful retention strategy this model reveals.
  
@@ -344,6 +349,8 @@ churn-prediction-model/
 ├── churn_prediction.ipynb    ← Full notebook with all steps
 ├── churn_model.pkl           ← Saved XGBoost model
 ├── telecom_churn.csv         ← Dataset (download from Kaggle)
+├── confusion_matrix.png      ← Confusion matrix visualization
+├── feature_importance.png    ← Feature importance chart
 ├── requirements.txt          ← All Python dependencies
 └── README.md                 ← You are here
 ```
@@ -376,3 +383,4 @@ churn-prediction-model/
 <div align="center">
 <sub>Made using Python • XGBoost • SMOTE • scikit-learn</sub>
 </div>
+ 
