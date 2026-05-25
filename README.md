@@ -4,14 +4,13 @@
 ![XGBoost](https://img.shields.io/badge/Model-XGBoost-orange)
 ![Recall](https://img.shields.io/badge/Churn%20Recall-92%25-brightgreen)
 ![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.76-blue)
+![SHAP](https://img.shields.io/badge/Explainability-SHAP-purple)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
  
 <div align="center">
 **An end-to-end Machine Learning model that identifies telecom customers likely to churn — before they actually leave.**
  
 </div>
-
-
 ---
  
 ## Table of Contents
@@ -23,6 +22,9 @@
 - [Model Architecture](#model-architecture)
 - [Results](#model-performance)
 - [Model Comparison](#model-comparison)
+- [SHAP Explainability](#shap-explainability)
+- [Business Impact](#business-impact)
+- [Customer Risk Tiers](#customer-risk-tiers)
 - [How to Run](#how-to-run)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
@@ -38,6 +40,7 @@ Customer churn costs telecom companies **billions of dollars** every year. Acqui
 | ROC-AUC | **0.76** |
 | Churners Caught | **342 / 373** |
 | Churners Missed | **Only 31** |
+| Estimated Revenue Saved | **$133,380** |
  
 ---
  
@@ -113,9 +116,24 @@ Customer churn costs telecom companies **billions of dollars** every year. Acqui
          |
          v
   +-------------+
+  | SHAP        |  - Global feature importance
+  | Explainability| - Per-customer prediction explanation
+  |             |  - Waterfall plots for interpretability
+  +------+------+
+         |
+         v
+  +-------------+
+  | Risk Tiers  |  - High Risk  (prob >= 0.70) → Immediate action
+  |             |  - Medium Risk (prob >= 0.40) → Monitor closely
+  |             |  - Low Risk   (prob < 0.40)  → No action needed
+  +------+------+
+         |
+         v
+  +-------------+
   | Evaluation  |  - Classification Report
   |             |  - ROC-AUC Score
   |             |  - Confusion Matrix
+  |             |  - Business Impact ($$$)
   +------+------+
          |
          v
@@ -272,6 +290,58 @@ XGBoost   → Recall 0.92 — missed only 31 churners (BEST)
  
 ---
  
+## SHAP Explainability
+ 
+Standard feature importance only tells you **which features matter globally**. SHAP goes one step further — it explains **why the model made a specific prediction for each individual customer.**
+ 
+### Global Feature Impact
+![SHAP Global](shap_global.png)
+ 
+### Feature Direction — What Pushes Churn Up or Down?
+![SHAP Summary](shap_summary.png)
+ 
+> - **Pink/Red** = pushes prediction towards churn
+> - **Blue** = pushes prediction away from churn
+> - Each dot = one customer in the test set
+ 
+
+ 
+## Business Impact
+ 
+A model is only valuable if it translates to real business outcomes. Here's the estimated financial impact of deploying this model:
+ 
+| Metric | Value |
+|--------|-------|
+| Churners correctly caught | 342 |
+| Avg monthly revenue per customer | $65 |
+| Avg remaining tenure | 6 months |
+| **Revenue saved** | **$133,380** |
+| Revenue lost (31 missed churners) | $12,090 |
+| Retention offer cost ($20 × 743 customers) | $14,860 |
+| **Net benefit** | **$118,520** |
+ 
+> Every missed churner = $390 in lost revenue (6 months × $65).
+> Every retention offer = $20 cost.
+> The math strongly favors aggressive churn intervention.
+ 
+---
+ 
+## Customer Risk Tiers
+ 
+Instead of a binary churn/no-churn label, customers are bucketed into **3 actionable risk levels** based on churn probability:
+ 
+| Risk Tier | Probability | Recommended Action |
+|-----------|-------------|-------------------|
+| 🔴 HIGH RISK | >= 70% | Immediate personal outreach + strong offer |
+| 🟡 MEDIUM RISK | 40% – 70% | Automated retention email + small discount |
+| 🟢 LOW RISK | < 40% | No action needed — monitor monthly |
+ 
+![Risk Tiers](risk_tiers.png)
+ 
+> This tiered approach means the retention budget is spent where it matters most — not wasted on customers who were never going to leave.
+ 
+---
+ 
 ## How to Run
  
 ### Prerequisites
@@ -279,7 +349,7 @@ XGBoost   → Recall 0.92 — missed only 31 churners (BEST)
 - pip
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/churn-prediction-model.git
+git clone https://github.com/HarshMishra1412/churn-prediction-model.git
 cd churn-prediction-model
 ```
  
@@ -348,13 +418,17 @@ print(f"Churn Probability: {prob:.1%}")
 ```
 churn-prediction-model/
 │
-├── churn_prediction.ipynb    ← Full notebook with all steps
-├── churn_model.pkl           ← Saved XGBoost model
-├── telecom_churn.csv         ← Dataset (download from Kaggle)
-├── confusion_matrix.png      ← Confusion matrix visualization
-├── feature_importance.png    ← Feature importance chart
-├── requirements.txt          ← All Python dependencies
-└── README.md                 ← You are here
+├── Churnpredictionmodel.ipynb  ← Full notebook with all steps
+├── churn_model.pkl             ← Saved XGBoost model
+├── WA_Fn-UseC_-Telco-Customer-Churn.csv  ← Dataset
+├── confusion_matrix.png        ← Confusion matrix visualization
+├── feature_importance.png      ← Feature importance chart
+├── shap_global.png             ← SHAP global feature importance
+├── shap_summary.png            ← SHAP direction plot
+├── shap_waterfall.png          ← SHAP single customer explanation
+├── risk_tiers.png              ← Customer risk tier distribution
+├── Requirements.txt            ← All Python dependencies
+└── README.md                   ← You are here
 ```
  
 ---
@@ -371,6 +445,7 @@ churn-prediction-model/
 | XGBoost | Primary ML model |
 | LightGBM | Comparison model |
 | Imbalanced-learn | SMOTE oversampling |
+| SHAP | Model explainability |
 | Joblib | Model serialization |
  
 ---
@@ -378,11 +453,10 @@ churn-prediction-model/
 ## Author
  
 > Built with a focus on real-world business impact — not just model accuracy.
-> Feel free to star this repo if you found it useful!
+> Feel free to star ⭐ this repo if you found it useful!
  
 ---
  
 <div align="center">
-<sub>Made using Python • XGBoost • SMOTE • scikit-learn</sub>
+<sub>Made using Python • XGBoost • SMOTE • SHAP • scikit-learn</sub>
 </div>
- 
