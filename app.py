@@ -64,8 +64,26 @@ if st.button("Predict Churn", type="primary"):
     df = pd.DataFrame([raw])
     df = df.reindex(columns=feature_cols, fill_value=0)
 
+    # 4b. Safety net: force everything numeric (catches any column that
+    # didn't get encoded properly, which causes XGBoost dtype errors)
+    df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+    # Debug info — expand this if predictions look wrong or error persists
+    with st.expander("🔧 Debug info (click if something looks off)"):
+        st.write("Encoder keys available:", list(encoders.keys()))
+        st.write("Raw dict before reindex:", raw)
+        st.write("Final dataframe sent to model:")
+        st.dataframe(df)
+        st.write("Column dtypes:")
+        st.write(df.dtypes)
+
     # 5. Predict using your tuned threshold
-    prob = model.predict_proba(df)[0][1]
+    # .values bypasses XGBoost's feature_names check — important if SMOTE
+    # converted X_train to a numpy array during training (common case)
+    try:
+        prob = model.predict_proba(df)[0][1]
+    except ValueError:
+        prob = model.predict_proba(df.values)[0][1]
     THRESHOLD = 0.35
     pred = int(prob >= THRESHOLD)
 
